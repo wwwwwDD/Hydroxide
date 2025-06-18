@@ -1,27 +1,49 @@
-local ModuleScript = {}
+local ScriptScanner = {}
+local LocalScript = import("objects/LocalScript")
 
-function ModuleScript.new(instance)
-    local moduleScript = {}
+local requiredMethods = {
+    ["getGc"] = true,
+    ["getSenv"] = true,
+    ["getProtos"] = true,
+    ["getConstants"] = true,
+    ["getScriptClosure"] = true,
+    ["isXClosure"] = true
+}
 
-    -- Проверяем, что instance не nil и является ModuleScript
-    if not instance or typeof(instance) ~= "Instance" or not instance:IsA("ModuleScript") then
-        warn("Invalid ModuleScript instance:", instance)
-        return moduleScript -- Возвращаем пустой объект, чтобы избежать ошибок
+local function scan(query)
+    local scripts = {}
+    query = query or ""
+
+    for _i, v in pairs(getGc()) do
+        if type(v) == "function" and not isXClosure(v) then
+            local script = rawget(getfenv(v), "script")
+
+            -- Проверяем, что script не nil и является LocalScript
+            if script and typeof(script) == "Instance" and 
+               script:IsA("LocalScript") and 
+               not scripts[script] and 
+               script.Name:lower():find(query)
+            then
+                -- Безопасный вызов getScriptClosure
+                local success, closure = pcall(getScriptClosure, script)
+                if success and closure then
+                    -- Безопасный вызов getsenv
+                    local senvSuccess = pcall(getsenv, script)
+                    if senvSuccess then
+                        scripts[script] = LocalScript.new(script)
+                    else
+                        warn("Failed to get senv for script:", script, script.Name)
+                    end
+                else
+                    warn("Failed to get script closure for:", script, script.Name, "Error:", closure)
+                end
+            end
+        end
     end
 
-    -- Безопасный вызов getScriptClosure
-    local success, closure = pcall(getScriptClosure, instance)
-    if not success then
-        warn("Failed to get script closure for", instance, ":", closure)
-        return moduleScript -- Возвращаем пустой объект
-    end
-
-    moduleScript.Instance = instance
-    moduleScript.Constants = getConstants(closure) or {}
-    moduleScript.Protos = getProtos(closure) or {}
-    --moduleScript.ReturnValue = require(instance) // causes detection
-
-    return moduleScript
+    return scripts
 end
 
-return ModuleScript
+ScriptScanner.RequiredMethods = requiredMethods
+ScriptScanner.Scan = scan
+return ScriptScanner
