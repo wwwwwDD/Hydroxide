@@ -1,28 +1,27 @@
-local function scan(query)
-    local scripts = {}
-    query = query or ""
+local ModuleScript = {}
 
-    for _i, v in pairs(getGc()) do
-        if type(v) == "function" and not isXClosure(v) then
-            local script = rawget(getfenv(v), "script")
+function ModuleScript.new(instance)
+    local moduleScript = {}
 
-            -- Проверяем, что script не nil и является Instance
-            if script and typeof(script) == "Instance" and 
-               (script:IsA("LocalScript") or script:IsA("ModuleScript") or script:IsA("Script")) and 
-               not scripts[script] and 
-               script.Name:lower():find(query)
-            then
-                -- Используем pcall для безопасного вызова getScriptClosure и getsenv
-                local success, closure = pcall(getScriptClosure, script)
-                if success and closure then
-                    local senvSuccess = pcall(function() getsenv(script) end)
-                    if senvSuccess then
-                        scripts[script] = LocalScript.new(script)
-                    end
-                end
-            end
-        end
+    -- Проверяем, что instance не nil и является ModuleScript
+    if not instance or typeof(instance) ~= "Instance" or not instance:IsA("ModuleScript") then
+        warn("Invalid ModuleScript instance:", instance)
+        return moduleScript -- Возвращаем пустой объект, чтобы избежать ошибок
     end
 
-    return scripts
+    -- Безопасный вызов getScriptClosure
+    local success, closure = pcall(getScriptClosure, instance)
+    if not success then
+        warn("Failed to get script closure for", instance, ":", closure)
+        return moduleScript -- Возвращаем пустой объект
+    end
+
+    moduleScript.Instance = instance
+    moduleScript.Constants = getConstants(closure) or {}
+    moduleScript.Protos = getProtos(closure) or {}
+    --moduleScript.ReturnValue = require(instance) // causes detection
+
+    return moduleScript
 end
+
+return ModuleScript
