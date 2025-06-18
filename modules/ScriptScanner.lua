@@ -1,15 +1,3 @@
-local ScriptScanner = {}
-local LocalScript = import("objects/LocalScript")
-
-local requiredMethods = {
-    ["getGc"] = true,
-    ["getSenv"] = true,
-    ["getProtos"] = true,
-    ["getConstants"] = true,
-    ["getScriptClosure"] = true,
-    ["isXClosure"] = true
-}
-
 local function scan(query)
     local scripts = {}
     query = query or ""
@@ -18,21 +6,23 @@ local function scan(query)
         if type(v) == "function" and not isXClosure(v) then
             local script = rawget(getfenv(v), "script")
 
-            if typeof(script) == "Instance" and 
-                not scripts[script] and 
-                script:IsA("LocalScript") and 
-                script.Name:lower():find(query) and
-                getScriptClosure(script) and
-                pcall(function() getsenv(script) end)
+            -- Проверяем, что script не nil и является Instance
+            if script and typeof(script) == "Instance" and 
+               (script:IsA("LocalScript") or script:IsA("ModuleScript") or script:IsA("Script")) and 
+               not scripts[script] and 
+               script.Name:lower():find(query)
             then
-                scripts[script] = LocalScript.new(script)
+                -- Используем pcall для безопасного вызова getScriptClosure и getsenv
+                local success, closure = pcall(getScriptClosure, script)
+                if success and closure then
+                    local senvSuccess = pcall(function() getsenv(script) end)
+                    if senvSuccess then
+                        scripts[script] = LocalScript.new(script)
+                    end
+                end
             end
         end
     end
 
     return scripts
 end
-
-ScriptScanner.RequiredMethods = requiredMethods
-ScriptScanner.Scan = scan
-return ScriptScanner
