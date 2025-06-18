@@ -12,7 +12,7 @@ local requiredMethods = {
 
 local function isValidScriptInstance(inst)
     return typeof(inst) == "Instance"
-        and (inst:IsA("LocalScript") or inst:IsA("ModuleScript") or inst:IsA("Script"))
+        and inst:IsA("LocalScript") -- 💥 ВАЖНО: только LocalScript
         and inst.Parent ~= nil
 end
 
