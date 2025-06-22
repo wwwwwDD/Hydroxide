@@ -18,6 +18,13 @@ local function scan(query)
         if type(v) == "function" and not isXClosure(v) then
             local script = rawget(getfenv(v), "script")
 
+            -- Логирование для отладки
+            if script then
+                print("Processing script:", script, "Type:", typeof(script), "Class:", script.ClassName or "N/A", "Name:", script.Name or "N/A")
+            else
+                print("No script found for function:", v)
+            end
+
             -- Проверяем, что script не nil и является LocalScript
             if script and typeof(script) == "Instance" and 
                script:IsA("LocalScript") and 
